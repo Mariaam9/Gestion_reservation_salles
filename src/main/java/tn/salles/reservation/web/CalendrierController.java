@@ -1,19 +1,40 @@
 package tn.salles.reservation.web;
+
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
-import java.time.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import tn.salles.reservation.service.CalendrierService;
 
 @Controller
 public class CalendrierController {
- private final CalendrierService service;
- public CalendrierController(CalendrierService service){this.service=service;}
- @GetMapping("/calendrier") String calendrier(@RequestParam(required=false) String mois,Model model){
-    YearMonth ym;
-    try{ym=mois==null?YearMonth.now():YearMonth.parse(mois);}catch(Exception e){ym=YearMonth.now();}
-    model.addAttribute("mois",ym.toString());model.addAttribute("moisPrecedent",ym.minusMonths(1).toString());
-    model.addAttribute("moisSuivant",ym.plusMonths(1).toString());model.addAttribute("jours",service.afficherMois(ym));
-    return "calendrier/index";
- }
+
+    private final CalendrierService calendrier;
+
+    public CalendrierController(CalendrierService calendrier) {
+        this.calendrier = calendrier;
+    }
+
+    @GetMapping("/calendrier")
+    public String afficher(@RequestParam(required = false) String mois, Model model) {
+        YearMonth moisAffiche = lireMois(mois);
+        model.addAttribute("mois", moisAffiche.toString());
+        model.addAttribute("moisPrecedent", moisAffiche.minusMonths(1).toString());
+        model.addAttribute("moisSuivant", moisAffiche.plusMonths(1).toString());
+        model.addAttribute("jours", calendrier.afficherMois(moisAffiche));
+        return "calendrier/index";
+    }
+
+    private static YearMonth lireMois(String mois) {
+        if (mois == null) {
+            return YearMonth.now();
+        }
+        try {
+            return YearMonth.parse(mois);
+        } catch (DateTimeParseException e) {
+            return YearMonth.now();
+        }
+    }
 }

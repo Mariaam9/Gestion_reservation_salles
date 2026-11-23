@@ -1,48 +1,111 @@
 package tn.salles.reservation.web;
+
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import java.time.LocalDate;
-import tn.salles.reservation.repository.*;
-import tn.salles.reservation.service.*;
+import tn.salles.reservation.exception.RegleMetierException;
+import tn.salles.reservation.service.EmployeService;
+import tn.salles.reservation.service.ReservationService;
+import tn.salles.reservation.service.SalleService;
 import tn.salles.reservation.web.form.ReservationForm;
 
-@Controller @RequestMapping("/reservations")
+@Controller
+@RequestMapping("/reservations")
 public class ReservationController {
- private final ReservationService service;private final EmployeRepository employes;private final SalleRepository salles;
- public ReservationController(ReservationService service,EmployeRepository employes,SalleRepository salles){this.service=service;this.employes=employes;this.salles=salles;}
- @GetMapping String liste(Model model){model.addAttribute("reservations",service.toutes());return "reservations/list";}
- @GetMapping("/nouvelle") String nouvelle(@RequestParam(required=false) Long salleId,Model model){
-    ReservationForm f=new ReservationForm();f.setSalleId(salleId);
-    f.setDateDebut(LocalDate.now().plusDays(1).atTime(9,0));f.setDateFin(LocalDate.now().plusDays(1).atTime(10,0));
-    model.addAttribute("reservationForm",f);remplir(model,null);return "reservations/form";
- }
- @GetMapping("/{id}/modifier") String modifier(@PathVariable Long id,Model model){
-    model.addAttribute("reservationForm",ReservationForm.depuis(service.parId(id)));remplir(model,id);return "reservations/form";
- }
- @PostMapping String creer(@Valid @ModelAttribute("reservationForm") ReservationForm form,BindingResult errors,Model model,RedirectAttributes redirect){
-    return sauver(null,form,errors,model,redirect);
- }
- @PostMapping("/{id}/modifier") String modifierPost(@PathVariable Long id,@Valid @ModelAttribute("reservationForm") ReservationForm form,BindingResult errors,Model model,RedirectAttributes redirect){
-    return sauver(id,form,errors,model,redirect);
- }
- private String sauver(Long id,ReservationForm f,BindingResult errors,Model model,RedirectAttributes redirect){
-   if(!errors.hasErrors()){
-      try {
-       if(id==null)service.creer(f);else service.modifier(id,f);
-       redirect.addFlashAttribute("succes",id==null?"Réservation créée et confirmée.":"Réservation modifiée.");
-       return "redirect:/reservations";
-      }catch(RegleMetierException ex){errors.reject("regle",ex.getMessage());}
-   }
-   remplir(model,id);return "reservations/form";
- }
- @PostMapping("/{id}/annuler") String annuler(@PathVariable Long id,RedirectAttributes redirect){
-    try{service.annuler(id);redirect.addFlashAttribute("succes","Réservation annulée.");}
-    catch(RegleMetierException ex){redirect.addFlashAttribute("erreur",ex.getMessage());}
-    return "redirect:/reservations";
- }
- private void remplir(Model model,Long id){model.addAttribute("id",id);model.addAttribute("titre",id==null?"Nouvelle réservation":"Modifier la réservation");model.addAttribute("salles",salles.findAll());model.addAttribute("employes",employes.findAll());}
+
+    private static final String VUE_FORMULAIRE = "reservations/form";
+    private static final String REDIRECTION_LISTE = "redirect:/reservations";
+
+    private final ReservationService reservations;
+    private final EmployeService employes;
+    private final SalleService salles;
+
+    public ReservationController(ReservationService reservations, EmployeService employes, SalleService salles) {
+        this.reservations = reservations;
+        this.employes = employes;
+        this.salles = salles;
+    }
+
+    @GetMapping
+    public String lister(Model model) {
+        model.addAttribute("reservations", reservations.toutes());
+        return "reservations/list";
+    }
+
+    @GetMapping("/nouvelle")
+    public String nouvelle(@RequestParam(required = false) Long salleId, Model model) {
+        LocalDate demain = LocalDate.now().plusDays(1);
+        ReservationForm form = new ReservationForm();
+        form.setSalleId(salleId);
+        form.setDateDebut(demain.atTime(9, 0));
+        form.setDateFin(demain.atTime(10, 0));
+        model.addAttribute("reservationForm", form);
+        return afficherFormulaire(null, model);
+    }
+
+    @GetMapping("/{id}/modifier")
+    public String modifier(@PathVariable Long id, Model model) {
+        model.addAttribute("reservationForm", ReservationForm.depuis(reservations.parId(id)));
+        return afficherFormulaire(id, model);
+    }
+
+    @PostMapping
+    public String creer(@Valid @ModelAttribute("reservationForm") ReservationForm form, BindingResult erreurs,
+                        Model model, RedirectAttributes redirection) {
+        return enregistrer(null, form, erreurs, model, redirection);
+    }
+
+    @PostMapping("/{id}/modifier")
+    public String enregistrerModification(@PathVariable Long id,
+                                          @Valid @ModelAttribute("reservationForm") ReservationForm form,
+                                          BindingResult erreurs, Model model, RedirectAttributes redirection) {
+        return enregistrer(id, form, erreurs, model, redirection);
+    }
+
+    @PostMapping("/{id}/annuler")
+    public String annuler(@PathVariable Long id, RedirectAttributes redirection) {
+        try {
+            reservations.annuler(id);
+            redirection.addFlashAttribute("succes", "Réservation annulée.");
+        } catch (RegleMetierException e) {
+            redirection.addFlashAttribute("erreur", e.getMessage());
+        }
+        return REDIRECTION_LISTE;
+    }
+
+    private String enregistrer(Long id, ReservationForm form, BindingResult erreurs,
+                               Model model, RedirectAttributes redirection) {
+        if (!erreurs.hasErrors()) {
+            try {
+                if (id == null) {
+                    reservations.creer(form.versCommande());
+                    redirection.addFlashAttribute("succes", "Réservation créée et confirmée.");
+                } else {
+                    reservations.modifier(id, form.versCommande());
+                    redirection.addFlashAttribute("succes", "Réservation modifiée.");
+                }
+                return REDIRECTION_LISTE;
+            } catch (RegleMetierException e) {
+                erreurs.reject("regle", e.getMessage());
+            }
+        }
+        return afficherFormulaire(id, model);
+    }
+
+    private String afficherFormulaire(Long id, Model model) {
+        model.addAttribute("id", id);
+        model.addAttribute("titre", id == null ? "Nouvelle réservation" : "Modifier la réservation");
+        model.addAttribute("salles", salles.toutes());
+        model.addAttribute("employes", employes.tous());
+        return VUE_FORMULAIRE;
+    }
 }

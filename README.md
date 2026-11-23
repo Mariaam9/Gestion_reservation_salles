@@ -16,7 +16,7 @@ mvn spring-boot:run
 
 5. Ouvrez **http://localhost:8080** : vous serez redirigé(e) vers **/site/index.html**.
 
-L'API Spring Boot (`/api/v1/salles`, `/api/v1/reservations`, etc.) est appelée automatiquement.
+L'API Spring Boot (`/api/v1/salles`, `/api/v1/reservations`, `/api/v1/journal`, etc.) est appelée automatiquement.
 Par défaut : **H2** en mémoire et données de démonstration. Vous pourrez basculer vers MySQL avec
 le profil `mysql` selon les propriétés du dossier `src/main/resources` et `README_BACKEND_ORIGINAL.md`.
 
@@ -48,11 +48,26 @@ autorisations par rôle, contrôle de propriété des réservations, protection 
 ## Structure des dossiers
 
 - `src/main/resources/static/site/` : site Salleo bleu et gris, HTML/CSS/JavaScript sans build npm.
-- `src/main/java/tn/salles/reservation/model/` : entités du diagramme UML (Employe, Salle, Creneau, Reservation, Responsable, Administrateur, StatistiqueUtilisation).
-- `src/main/java/tn/salles/reservation/service/` : logique métier, anti-chevauchement, statistiques.
-- `src/main/java/tn/salles/reservation/web/api/` : endpoints REST consommés par Salleo.
-- `src/main/resources/templates/` : anciennes pages de gestion Thymeleaf toujours accessibles (les salles, disponibilités, rapports...).
-- `docs/` : diagrammes UML fournis dans le projet précédent.
+- `src/main/java/tn/salles/reservation/`
+  - `model/` : entités du diagramme UML (Employe, Salle, Creneau, Reservation, Responsable, Administrateur) + objets valeur (`Periode`, `StatistiqueUtilisation`).
+  - `repository/` : interfaces Spring Data JPA.
+  - `service/` : interfaces des services métier, `service/impl/` : implémentations, `service/commande/` : données d'entrée.
+  - `designpatterns/` : **Singleton** (`JournalReservations`), **Strategy** (`RegleReservation` + règles), **Factory** (`ReservationFactory`).
+  - `exception/` : exceptions métier.
+  - `web/` : contrôleurs Thymeleaf, `web/api/` : API REST + DTO.
+- `src/main/resources/templates/` : pages de gestion Thymeleaf (salles, disponibilités, statistiques...).
+- `docs/` : diagrammes UML, **`CONCEPTION.md`** (justification des technologies, SOLID, design patterns) et supports de cours (`docs/cours-design-patterns/`).
+
+## Conception : clean code, SOLID et design patterns
+
+Voir **[docs/CONCEPTION.md](docs/CONCEPTION.md)**. En résumé :
+
+| Pattern / principe | Où dans le code |
+|---|---|
+| Singleton | `designpatterns/singleton/JournalReservations` — journal unique des opérations (`GET /api/v1/journal`) |
+| Strategy | `designpatterns/strategy/` — une classe par règle de réservation, appliquées par `ValidateurReservation` |
+| Factory | `designpatterns/factory/ReservationFactory` — création centralisée d'une réservation et de son créneau |
+| SRP / OCP / LSP / ISP / DIP | couches séparées, règles extensibles sans modification, services et repositories injectés par leurs interfaces |
 
 ## Ouvrir le site sans Java
 
