@@ -66,8 +66,7 @@ public class ReservationServiceImpl implements ReservationService {
         Employe employe = trouverEmploye(commande.employeId());
 
         Reservation reservation = fabrique.creerReservationConfirmee(
-                employe, salle, commande.dateDebut(), commande.dateFin(),
-                commande.motif(), commande.nombreParticipants());
+                employe, salle, commande);
         Reservation enregistree = reservations.save(reservation);
 
         journaliser("CREATION", enregistree);

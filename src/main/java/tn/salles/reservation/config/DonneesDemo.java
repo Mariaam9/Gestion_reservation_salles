@@ -16,6 +16,7 @@ import tn.salles.reservation.repository.EmployeRepository;
 import tn.salles.reservation.repository.ReservationRepository;
 import tn.salles.reservation.repository.ResponsableRepository;
 import tn.salles.reservation.repository.SalleRepository;
+import tn.salles.reservation.service.commande.ReservationCommande;
 
 /** Jeu de données de démonstration chargé uniquement avec le profil {@code dev}. */
 @Configuration
@@ -46,10 +47,17 @@ public class DonneesDemo {
             administrateurs.save(new Administrateur("Administration", "admin@example.com"));
 
             LocalDate demain = LocalDate.now().plusDays(1);
-            reservations.save(fabrique.creerReservationConfirmee(sami, atlas,
-                    demain.atTime(9, 0), demain.atTime(10, 30), "Réunion équipe produit", 6));
-            reservations.save(fabrique.creerReservationConfirmee(amira, carthage,
-                    demain.atTime(14, 0), demain.atTime(15, 0), "Point d'avancement", 4));
+            ReservationCommande reunionEquipe = new ReservationCommande(
+                    sami.getId(), atlas.getId(),
+                    demain.atTime(9, 0), demain.atTime(10, 30),
+                    "Réunion équipe produit", 6);
+            ReservationCommande pointAvancement = new ReservationCommande(
+                    amira.getId(), carthage.getId(),
+                    demain.atTime(14, 0), demain.atTime(15, 0),
+                    "Point d'avancement", 4);
+
+            reservations.save(fabrique.creerReservationConfirmee(sami, atlas, reunionEquipe));
+            reservations.save(fabrique.creerReservationConfirmee(amira, carthage, pointAvancement));
         };
     }
 }

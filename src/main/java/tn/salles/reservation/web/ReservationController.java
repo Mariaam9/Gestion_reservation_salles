@@ -59,16 +59,46 @@ public class ReservationController {
     }
 
     @PostMapping
-    public String creer(@Valid @ModelAttribute("reservationForm") ReservationForm form, BindingResult erreurs,
-                        Model model, RedirectAttributes redirection) {
-        return enregistrer(null, form, erreurs, model, redirection);
+    public String creer(
+            @Valid @ModelAttribute("reservationForm") ReservationForm form,
+            BindingResult erreurs,
+            Model model,
+            RedirectAttributes redirection) {
+
+        if (erreurs.hasErrors()) {
+            return afficherFormulaire(null, model);
+        }
+
+        try {
+            reservations.creer(form.versCommande());
+            redirection.addFlashAttribute("succes", "Réservation créée et confirmée.");
+            return REDIRECTION_LISTE;
+        } catch (RegleMetierException exception) {
+            erreurs.reject("regle", exception.getMessage());
+            return afficherFormulaire(null, model);
+        }
     }
 
     @PostMapping("/{id}/modifier")
-    public String enregistrerModification(@PathVariable Long id,
-                                          @Valid @ModelAttribute("reservationForm") ReservationForm form,
-                                          BindingResult erreurs, Model model, RedirectAttributes redirection) {
-        return enregistrer(id, form, erreurs, model, redirection);
+    public String enregistrerModification(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("reservationForm") ReservationForm form,
+            BindingResult erreurs,
+            Model model,
+            RedirectAttributes redirection) {
+
+        if (erreurs.hasErrors()) {
+            return afficherFormulaire(id, model);
+        }
+
+        try {
+            reservations.modifier(id, form.versCommande());
+            redirection.addFlashAttribute("succes", "Réservation modifiée.");
+            return REDIRECTION_LISTE;
+        } catch (RegleMetierException exception) {
+            erreurs.reject("regle", exception.getMessage());
+            return afficherFormulaire(id, model);
+        }
     }
 
     @PostMapping("/{id}/annuler")
@@ -76,29 +106,11 @@ public class ReservationController {
         try {
             reservations.annuler(id);
             redirection.addFlashAttribute("succes", "Réservation annulée.");
-        } catch (RegleMetierException e) {
-            redirection.addFlashAttribute("erreur", e.getMessage());
+        } catch (RegleMetierException exception) {
+            redirection.addFlashAttribute("erreur", exception.getMessage());
         }
-        return REDIRECTION_LISTE;
-    }
 
-    private String enregistrer(Long id, ReservationForm form, BindingResult erreurs,
-                               Model model, RedirectAttributes redirection) {
-        if (!erreurs.hasErrors()) {
-            try {
-                if (id == null) {
-                    reservations.creer(form.versCommande());
-                    redirection.addFlashAttribute("succes", "Réservation créée et confirmée.");
-                } else {
-                    reservations.modifier(id, form.versCommande());
-                    redirection.addFlashAttribute("succes", "Réservation modifiée.");
-                }
-                return REDIRECTION_LISTE;
-            } catch (RegleMetierException e) {
-                erreurs.reject("regle", e.getMessage());
-            }
-        }
-        return afficherFormulaire(id, model);
+        return REDIRECTION_LISTE;
     }
 
     private String afficherFormulaire(Long id, Model model) {

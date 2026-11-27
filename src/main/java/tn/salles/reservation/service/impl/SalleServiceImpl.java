@@ -15,6 +15,9 @@ import tn.salles.reservation.service.commande.SalleCommande;
 @Service
 public class SalleServiceImpl implements SalleService {
 
+    private static final String OPERATION_CREATION = "SALLE_CREEE";
+    private static final String OPERATION_MODIFICATION = "SALLE_MODIFIEE";
+
     private final SalleRepository salles;
     private final ResponsableRepository responsables;
 
@@ -38,25 +41,42 @@ public class SalleServiceImpl implements SalleService {
 
     @Override
     @Transactional
-    public Salle enregistrer(Long id, SalleCommande commande) {
-        boolean creation = id == null;
-        Salle salle = creation ? new Salle() : parId(id);
+    public Salle creer(SalleCommande commande) {
+        return enregistrer(new Salle(), commande, OPERATION_CREATION);
+    }
+
+    @Override
+    @Transactional
+    public Salle modifier(Long id, SalleCommande commande) {
+        Salle salleExistante = parId(id);
+        return enregistrer(salleExistante, commande, OPERATION_MODIFICATION);
+    }
+
+    private Salle enregistrer(Salle salle, SalleCommande commande, String operation) {
+        appliquerCommande(salle, commande);
+
+        Salle salleEnregistree = salles.save(salle);
+        JournalReservations.getInstance().enregistrer(
+                operation,
+                "Salle " + salleEnregistree.getNom()
+        );
+
+        return salleEnregistree;
+    }
+
+    private void appliquerCommande(Salle salle, SalleCommande commande) {
         salle.setNom(commande.nom().trim());
         salle.setCapacite(commande.capacite());
         salle.setLocalisation(commande.localisation().trim());
         salle.setStatut(commande.statut());
         salle.setResponsable(trouverResponsable(commande.responsableId()));
-
-        Salle enregistree = salles.save(salle);
-        JournalReservations.getInstance().enregistrer(
-                creation ? "SALLE_CREEE" : "SALLE_MODIFIEE", "Salle " + enregistree.getNom());
-        return enregistree;
     }
 
     private Responsable trouverResponsable(Long responsableId) {
         if (responsableId == null) {
             return null;
         }
+
         return responsables.findById(responsableId)
                 .orElseThrow(() -> new RessourceIntrouvableException("Responsable introuvable."));
     }

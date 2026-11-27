@@ -67,9 +67,14 @@ Aucune couche basse ne dépend d'une couche haute (le service ne connaît plus l
 | Setters publics sur `statut`, `creneau`, `employe` de `Reservation` | État encapsulé : `confirmer()`, `annuler()`, `modifierDetails()`, `Creneau.deplacer()` |
 | `catch (Exception e)` générique dans le calendrier | `catch (DateTimeParseException e)` ciblé |
 | Exceptions métier dans le package `service` | Package dédié `exception` |
-| Nombres et chaînes répétés | Constantes nommées (`VUE_FORMULAIRE`, `FORMAT_DATE_HEURE`, `TAUX_MAXIMUM`) |
+| Nombres et chaînes répétés | Constantes nommées (`VUE_FORMULAIRE`, `FORMAT_DATE_HEURE`, `TAUX_MAXIMUM`, `FACTEUR_POURCENTAGE`, `FACTEUR_ARRONDI`) |
+| `SalleService.enregistrer(id, commande)` utilisait `id == null` pour distinguer deux opérations | Deux opérations explicites : `creer(commande)` et `modifier(id, commande)` |
+| La méthode de contrôleur `enregistrer(...)` choisissait la création ou la modification selon un identifiant nullable | Deux actions distinctes dans `SalleController` et `ReservationController`, chacune dédiée à son cas d'utilisation |
+| `ReservationFactory.creerReservationConfirmee(...)` recevait six paramètres | La Factory reçoit l'objet `ReservationCommande`, qui regroupe les données de création |
+| La validation d'un responsable pouvait échouer sans message visible | `ResponsableController` transmet un message de succès ou d'erreur à la vue |
+| Le calcul du taux d'occupation mélangeait calcul, arrondi et valeurs littérales | Méthodes dédiées (`calculerTauxOccupation`, `arrondirADeuxDecimales`) et constantes nommées |
 
-Le comportement fonctionnel et le format JSON de l'API sont **inchangés** : le site Salleo fonctionne sans modification.
+Les routes HTTP de l'API, les propriétés JSON et les interactions du site Salleo sont **conservées**. Le frontend statique (`static/site/app.js`, `index.html`, `style.css` et `favicon.svg`) n'a pas été modifié.
 
 ---
 

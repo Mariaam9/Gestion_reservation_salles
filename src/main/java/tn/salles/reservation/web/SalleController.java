@@ -49,27 +49,42 @@ public class SalleController {
     }
 
     @PostMapping
-    public String creer(@Valid @ModelAttribute("salleForm") SalleForm form, BindingResult erreurs, Model model) {
-        return enregistrer(null, form, erreurs, model);
+    public String creer(
+            @Valid @ModelAttribute("salleForm") SalleForm form,
+            BindingResult erreurs,
+            Model model) {
+
+        if (erreurs.hasErrors()) {
+            return afficherFormulaire(null, model);
+        }
+
+        try {
+            salles.creer(form.versCommande());
+            return REDIRECTION_LISTE;
+        } catch (RegleMetierException exception) {
+            erreurs.reject("regle", exception.getMessage());
+            return afficherFormulaire(null, model);
+        }
     }
 
     @PostMapping("/{id}/modifier")
-    public String enregistrerModification(@PathVariable Long id,
-                                          @Valid @ModelAttribute("salleForm") SalleForm form,
-                                          BindingResult erreurs, Model model) {
-        return enregistrer(id, form, erreurs, model);
-    }
+    public String enregistrerModification(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("salleForm") SalleForm form,
+            BindingResult erreurs,
+            Model model) {
 
-    private String enregistrer(Long id, SalleForm form, BindingResult erreurs, Model model) {
-        if (!erreurs.hasErrors()) {
-            try {
-                salles.enregistrer(id, form.versCommande());
-                return REDIRECTION_LISTE;
-            } catch (RegleMetierException e) {
-                erreurs.reject("regle", e.getMessage());
-            }
+        if (erreurs.hasErrors()) {
+            return afficherFormulaire(id, model);
         }
-        return afficherFormulaire(id, model);
+
+        try {
+            salles.modifier(id, form.versCommande());
+            return REDIRECTION_LISTE;
+        } catch (RegleMetierException exception) {
+            erreurs.reject("regle", exception.getMessage());
+            return afficherFormulaire(id, model);
+        }
     }
 
     private String afficherFormulaire(Long id, Model model) {

@@ -18,6 +18,8 @@ import tn.salles.reservation.service.StatistiqueService;
 public class StatistiqueServiceImpl implements StatistiqueService {
 
     private static final double TAUX_MAXIMUM = 100.0;
+    private static final double FACTEUR_POURCENTAGE = 100.0;
+    private static final double FACTEUR_ARRONDI = 100.0;
 
     private final SalleRepository salles;
     private final ReservationRepository reservations;
@@ -37,13 +39,28 @@ public class StatistiqueServiceImpl implements StatistiqueService {
     }
 
     private StatistiqueUtilisation calculerPourSalle(Salle salle, Periode periode) {
-        List<Reservation> liste = reservations.trouverSallePeriode(
+        List<Reservation> reservationsDeLaSalle = reservations.trouverSallePeriode(
                 salle.getId(), periode.debut(), periode.fin(), StatutReservation.CONFIRMEE);
-        long minutesOccupees = minutesOccupeesSansDoublon(liste, periode);
+        long minutesOccupees = minutesOccupeesSansDoublon(reservationsDeLaSalle, periode);
         long minutesTotales = periode.dureeEnMinutes();
-        double taux = minutesTotales == 0 ? 0 : arrondirADeuxDecimales(100.0 * minutesOccupees / minutesTotales);
-        return new StatistiqueUtilisation(salle, periode.debut(), periode.fin(),
-                liste.size(), Math.min(TAUX_MAXIMUM, taux));
+        double tauxOccupation = calculerTauxOccupation(minutesOccupees, minutesTotales);
+
+        return new StatistiqueUtilisation(
+                salle,
+                periode.debut(),
+                periode.fin(),
+                reservationsDeLaSalle.size(),
+                Math.min(TAUX_MAXIMUM, tauxOccupation)
+        );
+    }
+
+    private double calculerTauxOccupation(long minutesOccupees, long minutesTotales) {
+        if (minutesTotales == 0) {
+            return 0;
+        }
+
+        double taux = FACTEUR_POURCENTAGE * minutesOccupees / minutesTotales;
+        return arrondirADeuxDecimales(taux);
     }
 
     /**
@@ -51,7 +68,7 @@ public class StatistiqueServiceImpl implements StatistiqueService {
      * pour ne jamais compter deux fois le même temps.
      */
     private long minutesOccupeesSansDoublon(List<Reservation> reservationsTriees, Periode periode) {
-        long minutes = 0;
+        long minutesOccupees = 0;
         LocalDateTime debutFusion = null;
         LocalDateTime finFusion = null;
 
@@ -65,26 +82,28 @@ public class StatistiqueServiceImpl implements StatistiqueService {
             } else if (!debut.isAfter(finFusion)) {
                 finFusion = max(finFusion, fin);
             } else {
-                minutes += Duration.between(debutFusion, finFusion).toMinutes();
+                minutesOccupees += Duration.between(debutFusion, finFusion).toMinutes();
                 debutFusion = debut;
                 finFusion = fin;
             }
         }
+
         if (debutFusion != null) {
-            minutes += Duration.between(debutFusion, finFusion).toMinutes();
+            minutesOccupees += Duration.between(debutFusion, finFusion).toMinutes();
         }
-        return minutes;
+
+        return minutesOccupees;
     }
 
-    private static LocalDateTime max(LocalDateTime a, LocalDateTime b) {
-        return a.isAfter(b) ? a : b;
+    private static LocalDateTime max(LocalDateTime first, LocalDateTime second) {
+        return first.isAfter(second) ? first : second;
     }
 
-    private static LocalDateTime min(LocalDateTime a, LocalDateTime b) {
-        return a.isBefore(b) ? a : b;
+    private static LocalDateTime min(LocalDateTime first, LocalDateTime second) {
+        return first.isBefore(second) ? first : second;
     }
 
     private static double arrondirADeuxDecimales(double valeur) {
-        return Math.round(valeur * 100.0) / 100.0;
+        return Math.round(valeur * FACTEUR_ARRONDI) / FACTEUR_ARRONDI;
     }
 }

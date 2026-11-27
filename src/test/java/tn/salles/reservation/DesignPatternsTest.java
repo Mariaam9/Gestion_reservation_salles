@@ -108,8 +108,10 @@ class DesignPatternsTest {
     @Test
     void factoryCreeUneReservationConfirmeeAvecSonCreneau() {
         Employe employe = new Employe("Sami", "sami@example.com");
+        ReservationCommande commande = new ReservationCommande(
+                1L, 1L, DEBUT, FIN, "  Réunion  ", 3);
         Reservation reservation = new ReservationFactory()
-                .creerReservationConfirmee(employe, salle, DEBUT, FIN, "  Réunion  ", 3);
+                .creerReservationConfirmee(employe, salle, commande);
 
         assertEquals(StatutReservation.CONFIRMEE, reservation.getStatut());
         assertEquals("Réunion", reservation.getMotif());
